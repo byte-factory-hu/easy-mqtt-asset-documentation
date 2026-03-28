@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Easy MQTT asset documentation</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+
+<style>
+/* General body */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1e1e1e;  
+    color: #e0e0e0;             
+    line-height: 1.6;
+    margin: 40px;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #ffffff;
+    margin-top: 1.5em;
+}
+
+h1 { font-size: 30px; }
+h2 { font-size: 24px; }
+h3 { font-size: 20px; }
+
+/* Paragraphs */
+p {
+    margin-bottom: 1em;
+}
+
+/* Links */
+a {
+    color: #4ba2f8;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* TOC Styling */
+#toc {
+    background-color: #2a2a2a;
+    border-left: 5px solid #1e90ff;
+    padding: 15px 20px;
+    border-radius: 5px;
+    margin-bottom: 30px;
+}
+#toc ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+#toc li {
+    margin-bottom: 8px;
+}
+
+/* Table formatting */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+}
+th, td {
+    border: 1px solid #444;
+    padding: 10px;
+}
+th {
+    background-color: #333;
+    color: #ffffff;
+}
+
+/* Code blocks */
+pre {
+    padding: 20px;
+    background: #252526; 
+    color: #f8f8f2;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+code {
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Optional: subtle section divider */
+hr {
+    border: none;
+    border-top: 1px solid #444;
+    margin: 2em 0;
+}
+</style>
+</head>
+<body>
+
+<h1>Easy MQTT by ByteFactory</h1>
+<h5>ByteFactory, 2026<h5>
+
+<h2>Table of Contents</h2>
+<div id="toc">
+    <ul>
+        <li><a href="#overview">1. Overview</a></li>
+        <li><a href="#support">2. Support / Contact</a></li>
+        <li><a href="#client-creation">3. Create MQTT client</a></li>
+        <li><a href="#subscribe">4. Subscribe to topics</a></li>
+        <li><a href="#unsubscribe">5. Unsubscribe from topics</a></li>
+        <li><a href="#publish">6. Publish data to topics</a></li>
+        <li><a href="#disconnect">7. Disconnect handling</a></li>
+        <li><a href="#dispose">8. Dispose / Cleanup Clients</a></li>
+        <li><a href="#unity-full-lifecycle">9. Full Easy MQTT Client Lifecycle in Unity</a></li>
+        <li><a href="#public-api">10. Public API</a></li>
+        <li><a href="#demo-scene">11. Simple Unity Demo Code</a></li>
+    </ul>
+</div>
+
+<h2 id="overview">1. Overview</h2>
+<p>
+    The <strong>Easy MQTT</strong> asset enables developers to quickly and easily establish MQTT connections and initiate communication. 
+    At its core, the asset relies on a <strong>DLL</strong> that provides the fundamental functionality. 
+    This DLL serves as a wrapper for the widely used and well-known <strong>.NET library MQTTnet</strong>.
+</p>
+<p>
+    However, Easy MQTT is not just a simple wrapper. 
+    It extends the base library with additional useful features, offering solutions for developers of all skill levels—from beginners to advanced users—and for projects ranging from small-scale prototypes to complex applications.
+</p>
+
+<h3>Purpose / Key Features</h3>
+<ul>
+    <li>Quick creation and configuration of MQTT clients.</li>
+    <li>Fluent subscription builder for registering handlers.</li>
+    <li>Route-based dispatching: multiple handlers per topic, router-managed lifecycle.</li>
+    <li>Small, focused surface for publish/subscribe scenarios with JSON payloads or simple strings.</li>
+    <li>Automatic reconnection with configurable timeout.</li>
+    <li>Secure or unsecure connection over TCP or WebSocket, with optional credentials (username, password).</li>
+</ul>
+
+<h2 id="support">2. Support / Contact</h2>
+<p>
+    Our team provides ongoing development, bug fixes, and maintenance for the package. 
+    If you have any questions, feature requests, or encounter issues, please feel free to contact us! 
+</p>
+<p>
+    <strong>Email:</strong> <a href="mailto:bytefactory2026@gmail.com">bytefactory2026@gmail.com</a>
+</p>
+
+<h2 id="client-creation">2. Create MQTT Client</h2>
+<p>
+    To simplify the creation of MQTT clients, the asset provides a dedicated <strong>factory class</strong>. 
+    This approach encapsulates the client instantiation logic and ensures a consistent and reliable setup process.
+</p>
+<p>
+    When creating a client, a <strong>configuration object</strong> must be provided. 
+    This configuration defines all required connection parameters, including transport type, authentication, and reconnection behavior.
+</p>
+
+<pre><code class="language-csharp">
+var client = new MqttClientFactory().CreateMqttClient(config);
+</code></pre>
+
+<p>
+    The factory method <strong>CreateMqttClient</strong> returns an instance of the 
+    <strong>IEasyMqttClient</strong> interface (from the <code>EasyMqtt.Interfaces</code> namespace).
+</p>
+
+<pre><code class="language-csharp">
+// MQTT client interface
+public interface IEasyMqttClient : IAsyncDisposable {
+    MqttClientConfig Config { get; }
+    Guid Id { get; }
+    MQTTConnectionState ConnectionState { get; }
+
+    event Func<string, Task> OnClientConnected;
+    event Func<DisconnectReason, Task> OnClientDisconnected;
+    event Action<ITopicSubscription> OnSubscribed;
+    event Action<ITopicSubscription> OnUnsubscribed;
+    event Action<string, QoS, string> OnMessageReceived;
+    event Action<Exception> OnError;
+
+    Task ConnectAsync(CancellationToken ct = default);
+    Task DisconnectAsync(DisconnectReason reason = DisconnectReason.NormalDisconnection, CancellationToken ct = default);
+
+    Task<ITopicSubscription> SubscribeAsync(string topic, QoS qos = QoS.AtMostOnce, CancellationToken ct = default);
+
+    Task UnsubscribeAsync(ITopicSubscription subscription, CancellationToken ct = default);
+
+    Task PublishAsync(string topic, string payload, QoS qos = QoS.AtMostOnce, bool retain = false, CancellationToken ct = default);
+    Task PublishAsync<T>(string topic, T payload, QoS qos = QoS.AtMostOnce, bool retain = false, CancellationToken ct = default);
+
+    IMqttSubscriptionBuilder CreateSubscription();
+}
+</code></pre>
+
+<h3>Client Configuration</h3>
+<p>
+    The <code>MqttClientConfig</code> class defines all parameters required to establish a connection.
+</p>
+
+<pre><code class="language-csharp">
+// client configuration 
+public class MqttClientConfig {
+    public string Host = "broker.example.com";
+    public int Port = 1883;
+
+    public TransportType Transport = TransportType.TCP;
+    public string WebSocketEndpoint = string.Empty;
+
+    public bool UseCredentials = false;
+    public string Username = "&lt;username&gt;";
+    public string Password = "&lt;password&gt;";
+
+    public MQTTConnectionMode ConnectionMode = MQTTConnectionMode.PlainText;
+    public string ExpectedHash = "&lt;hash&gt;";
+
+    public bool AutoReconnect = false;
+    public int ReconnectDelayMs = 5000; 
+}
+</code></pre>
+
+<h3>Configuration Details</h3>
+<ul>
+    <li><strong>Host / Port:</strong> Specifies the MQTT broker address and port.</li>
+    <li><strong>Transport:</strong> Defines the transport protocol (TCP or WebSocket).</li>
+    <li><strong>WebSocketEndpoint:</strong> Required when using WebSocket transport (commonly <code>/mqtt</code>).</li>
+    <li><strong>UseCredentials:</strong> Enables username/password authentication.</li>
+    <li><strong>ConnectionMode:</strong> Defines the security mode (e.g., plaintext or secure).</li>
+    <li><strong>AutoReconnect:</strong> Enables automatic reconnection.</li>
+    <li><strong>ReconnectDelayMs:</strong> Delay between reconnection attempts in milliseconds.</li>
+</ul>
+
+<h3>Example Usage (Simple)</h3>
+<pre><code class="language-csharp">
+var config = new MqttClientConfig {
+    Host = "broker.example.com",
+    Port = 1883
+};
+
+var factory = new MqttClientFactory();
+var client = factory.CreateMqttClient(config);
+</code></pre>
+
+<p>
+    After creating the client, nearly all functionality of the DLL is accessed through this instance.
+</p>
+
+<h2 id="subscribe">4. Subscribe to Topics</h2>
+<p>
+    The Easy MQTT client provides multiple ways to subscribe to topics, ranging from simple one-line subscriptions 
+    to a powerful and expressive <strong>fluent builder</strong> approach.
+</p>
+
+<h3>Simple Subscription</h3>
+<p>
+    For quick and straightforward scenarios, you can subscribe with a single method call:
+</p>
+
+<pre><code class="language-csharp">
+var subscription = await client.SubscribeAsync("my/topic", QoS.AtMostOnce);
+</code></pre>
+
+<p>
+    This approach is ideal when you only need basic subscription functionality without additional processing logic.
+</p>
+
+<hr>
+
+<h3>Fluent Subscription Builder</h3>
+<p>
+    For more advanced use cases, Easy MQTT provides a <strong>fluent builder API</strong> that allows you to define 
+    subscriptions in a clean, readable, and composable way.
+</p>
+
+<pre><code class="language-csharp">
+await client.CreateSubscription()
+    .WithTopic("game/events")
+    .WithQos(QoS.AtLeastOnce)
+    .AddTopicHandler(payload => {
+        Console.WriteLine($"Event received: {payload}");
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<p>
+    The fluent API is designed to be both <strong>easy to read</strong> and <strong>easy to extend</strong>, 
+    making it suitable for both simple and complex scenarios.
+</p>
+
+<h3>Common Use Cases</h3>
+
+<h4>1. Logging Incoming Messages</h4>
+<pre><code class="language-csharp">
+await client.CreateSubscription()
+    .WithTopic("logs/system")
+    .AddTopicHandler(payload => {
+        Console.WriteLine(payload);
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<h4>2. Handling Multiple Handlers on the Same Topic</h4>
+<pre><code class="language-csharp">
+await client.CreateSubscription()
+    .WithTopic("game/state")
+    .AddTopicHandler(payload => {
+        Console.WriteLine("Handler 1");
+        return Task.CompletedTask;
+    })
+    .AddTopicHandler(payload => {
+        Console.WriteLine("Handler 2");
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<h4>3. JSON / DTO-Based Processing</h4>
+<pre><code class="language-csharp">
+await client.CreateSubscription()
+    .WithTopic("player/update")
+    .AddTopicHandler&lt;PlayerDto&gt;(data => {
+        Console.WriteLine(data.Username);
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<p>
+    In this case, the payload is automatically deserialized into a strongly typed object using the configured serializer.
+</p>
+
+<hr>
+
+<h3>String vs Typed Handlers</h3>
+
+<p>
+    Easy MQTT supports two types of message handlers:
+</p>
+
+<ul>
+    <li><strong>Raw string handlers</strong> – receive the payload as a string.</li>
+    <li><strong>Typed handlers (DTO)</strong> – automatically deserialize the payload into a strongly typed object.</li>
+</ul>
+
+<p>
+    This allows you to choose between maximum flexibility (string) and type safety (DTO), depending on your use case.
+</p>
+
+<hr>
+
+<h3>Route-Based Message Handling</h3>
+<p>
+    Internally, all subscriptions are managed by a <strong>router</strong>. 
+    Instead of binding a single handler to a topic, Easy MQTT introduces a <strong>route-based system</strong>, 
+    where multiple handlers can be attached and managed independently.
+</p>
+
+<p>
+    Each handler is associated with a unique <strong>route</strong>, represented by a <code>RouteId</code>.
+</p>
+
+<pre><code class="language-csharp">
+public interface IRouteLink {
+    Guid RouteId { get; }
+    string Topic { get; }
+}
+</code></pre>
+
+<h4>Example: Route-Based Handling</h4>
+<pre><code class="language-csharp">
+var subscription = await client.CreateSubscription()
+    .WithTopic("chat/messages")
+    .AddTopicHandler(msg => {
+        Console.WriteLine("UI handler");
+        return Task.CompletedTask;
+    })
+    .AddTopicHandler(msg => {
+        Console.WriteLine("Logging handler");
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<p>
+    In this example:
+</p>
+<ul>
+    <li>Both handlers are attached to the same topic.</li>
+    <li>Each handler is internally registered as a separate route.</li>
+    <li>Handlers are executed independently when a message is received.</li>
+</ul>
+
+<p>
+    This architecture enables clean separation of concerns and scalable message processing.
+</p>
+
+<hr>
+
+<h3>Route Management and Control</h3>
+<p>
+    When using the <strong>fluent subscription builder</strong>, multiple handlers can be attached to the same topic. 
+    However, these handlers are managed <strong>collectively</strong> as part of a single subscription.
+</p>
+
+<p>
+    This means that individual handlers cannot be modified or removed separately, as the builder does not expose 
+    their underlying route identifiers.
+</p>
+
+<h4>Fluent Builder Behavior</h4>
+<pre><code class="language-csharp">
+await client.CreateSubscription()
+    .WithTopic("game/state")
+    .AddTopicHandler(handler1)
+    .AddTopicHandler(handler2)
+    .SubscribeAsync();
+</code></pre>
+
+<ul>
+    <li>Handlers are grouped under a single subscription.</li>
+    <li>No direct access to individual routes.</li>
+    <li>Best suited for static or predefined handler sets.</li>
+</ul>
+
+<hr>
+
+<h4>Manual Route Management (Advanced)</h4>
+<p>
+    For scenarios where individual handlers need to be managed dynamically, 
+    Easy MQTT exposes a lower-level routing API via <code>IMqttRouterApi</code>.
+</p>
+
+<pre><code class="language-csharp">
+public interface IMqttRouterApi {
+    IRouteLink AddRoute(TopicReceiveHandler handler);
+    IRouteLink AddRoute&lt;T&gt;(TopicReceiveHandler&lt;T&gt; handler);
+    void DeleteRoute(IRouteLink link);
+    void DeleteAllRoutes();
+}
+</code></pre>
+
+<p>
+    Each call to <code>AddRoute</code> returns an <code>IRouteLink</code>, which uniquely identifies the registered handler.
+</p>
+
+<h4>Example: Managing Routes Individually</h4>
+<pre><code class="language-csharp">
+var subscription = await client.SubscribeAsync("chat/messages");
+
+var route1 = subscription.AddRoute(msg => {
+    Console.WriteLine("Handler 1");
+    return Task.CompletedTask;
+});
+
+var route2 = subscription.AddRoute(msg => {
+    Console.WriteLine("Handler 2");
+    return Task.CompletedTask;
+});
+
+// Later: remove a specific handler
+subscription.DeleteRoute(route1);
+</code></pre>
+
+<ul>
+    <li>Each handler is assigned a unique <code>RouteId</code>.</li>
+    <li>Handlers can be added or removed independently.</li>
+    <li>Ideal for dynamic systems (e.g., UI elements, plugins, modular features).</li>
+</ul>
+
+<p>
+    This dual approach allows you to choose between:
+</p>
+
+<ul>
+    <li><strong>Fluent builder</strong> → simplicity and readability</li>
+    <li><strong>Manual routing API</strong> → fine-grained control and flexibility</li>
+</ul>
+
+<hr>
+
+<h3>Global Message Event</h3>
+<p>
+    In addition to per-topic handlers, the client exposes a global event:
+</p>
+
+<pre><code class="language-csharp">
+client.OnMessageReceived += (topic, qos, payload) => {
+    Console.WriteLine($"[{topic}] {payload}");
+};
+</code></pre>
+
+<p>
+    This event is triggered for <strong>every incoming message</strong>, regardless of subscriptions.
+</p>
+
+<ul>
+    <li>Useful for debugging and logging</li>
+    <li>Can be used for global monitoring</li>
+    <li>Works alongside the routing system</li>
+</ul>
+
+<hr>
+
+<h3>Subscription Lifecycle</h3>
+<p>
+    Subscriptions in Easy MQTT are tightly coupled to the lifecycle of the client connection.
+</p>
+
+<p>
+    When a subscription is created, it remains active as long as the client stays connected. 
+    However, subscriptions are <strong>not persistent across disconnections</strong>.
+</p>
+
+<h4>Lifecycle Behavior</h4>
+<ul>
+    <li>Subscriptions are created after a successful <code>ConnectAsync()</code>.</li>
+    <li>All subscriptions remain active while the client is connected.</li>
+    <li>On disconnection, all subscriptions and their associated routes are automatically removed.</li>
+</ul>
+
+<pre><code class="language-csharp">
+// Internal behavior on disconnect
+foreach(var subscription in _subscriptions.Values)
+    subscription.DeleteAllRoutes();
+
+_subscriptions.Clear();
+</code></pre>
+
+<h4>Reconnect Behavior</h4>
+<p>
+    If <code>AutoReconnect</code> is enabled, the client will attempt to reconnect automatically. 
+    However, <strong>subscriptions are not restored automatically</strong> after reconnection.
+</p>
+
+<p>
+    This means that after a reconnect, all subscriptions must be re-created manually.
+</p>
+
+<h4>Recommended Pattern</h4>
+<p>
+    It is recommended to re-subscribe inside the <code>OnClientConnected</code> event:
+</p>
+
+<pre><code class="language-csharp">
+client.OnClientConnected += async (_) => {
+    await client.CreateSubscription()
+        .WithTopic("game/events")
+        .AddTopicHandler(msg => {
+            Console.WriteLine(msg);
+            return Task.CompletedTask;
+        })
+        .SubscribeAsync();
+};
+</code></pre>
+
+<ul>
+    <li>Ensures subscriptions are always restored after reconnect.</li>
+    <li>Works seamlessly with <code>AutoReconnect</code>.</li>
+    <li>Keeps subscription logic centralized.</li>
+</ul>
+
+<h4>Example: Managing Subscriptions Across Reconnects</h4>
+<p>
+    A common pattern is to store subscription definitions and re-subscribe automatically when the client reconnects.
+</p>
+
+<pre><code class="language-csharp">
+public class MqttService {
+    private readonly IEasyMqttClient _client;
+
+    // Store subscription definitions (not actual subscriptions)
+    private readonly List&lt;Func&lt;Task&gt;&gt; _subscriptionDefinitions = new();
+
+    public MqttService(IEasyMqttClient client) {
+        _client = client;
+
+        // Register lifecycle events
+        _client.OnClientConnected += OnConnected;
+        _client.OnClientDisconnected += OnDisconnected;
+
+        // Define subscriptions (no actual subscribe happens here)
+        RegisterSubscriptions();
+    }
+
+    private void RegisterSubscriptions() {
+        // Only defining what should happen later on connect
+        _subscriptionDefinitions.Add(async () => {
+            await _client.CreateSubscription()
+                .WithTopic("game/events")
+                .AddTopicHandler(msg => {
+                    Console.WriteLine($"Event: {msg}");
+                    return Task.CompletedTask;
+                })
+                .SubscribeAsync();
+        });
+
+        _subscriptionDefinitions.Add(async () => {
+            await _client.CreateSubscription()
+                .WithTopic("player/update")
+                .AddTopicHandler&lt;PlayerDto&gt;(data => {
+                    Console.WriteLine($"Player: {data.Username}");
+                    return Task.CompletedTask;
+                })
+                .SubscribeAsync();
+        });
+    }
+
+    private async Task OnConnected(string clientId) {
+        Console.WriteLine($"Connected: {clientId}");
+
+        // Actual subscriptions happen here
+        foreach (var subscribe in _subscriptionDefinitions) {
+            await subscribe();
+        }
+    }
+
+    private async Task OnDisconnected(DisconnectReason reason) {
+        Console.WriteLine($"Disconnected: {reason}");
+
+        // Optional: handle cleanup, UI updates, etc.
+        await Task.CompletedTask;
+    }
+}
+</code></pre>
+
+<p>
+    <strong>Important:</strong> The <code>RegisterSubscriptions</code> method does not perform any actual subscriptions. 
+    It only defines the subscription logic, which is executed later when the client successfully connects.
+</p>
+
+<ul>
+    <li>Subscriptions are created only after <code>OnClientConnected</code> is triggered.</li>
+    <li>This ensures proper behavior when using <code>AutoReconnect</code>.</li>
+    <li>Prevents duplicate subscriptions and ensures a consistent lifecycle.</li>
+</ul>
+
+<hr>
+
+<h3>Events Triggered by Subscribe</h3> 
+<p> Both simple subscriptions and fluent builder subscriptions trigger the <code>OnSubscribed</code> event: </p> 
+<pre><code class="language-csharp"> 
+client.OnSubscribed += subscription => { Console.WriteLine($"Subscribed to topic: {subscription.Topic}"); }; 
+</code></pre> 
+<ul> 
+    <li>Always called after the subscription is successfully added to the internal dictionary.</li> 
+    <li>Useful for updating UI, logging, or internal state.</li> <li>Works for both single subscriptions (`SubscribeAsync`) and fluent builder subscriptions (`CreateSubscription().SubscribeAsync()`).</li> 
+</ul>
+
+<h4>Key Takeaways</h4>
+<ul>
+    <li>Subscriptions live only during an active connection.</li>
+    <li>All subscriptions are cleared on disconnect.</li>
+    <li>AutoReconnect does not restore subscriptions automatically.</li>
+    <li>Re-subscription must be handled explicitly by the user.</li>
+</ul>
+
+<hr>
+
+<h3>Summary</h3>
+<ul>
+    <li>Simple API for quick subscriptions.</li>
+    <li>Fluent builder for expressive and scalable setups.</li>
+    <li>Supports both string and strongly typed (DTO) handlers.</li>
+    <li>Route-based system enables multiple handlers per topic.</li>
+    <li>Manual routing API provides fine-grained control over individual handlers.</li>
+    <li>Global message event ensures full visibility of incoming traffic.</li>
+</ul>
+
+<hr>
+
+<h2 id="unsubscribe">5. Unsubscribe from Topics</h2>
+<p>
+    The <strong>Easy MQTT DLL</strong> manages subscriptions internally through a concurrent dictionary. 
+    Each <code>ITopicSubscription</code> represents a registered subscription, and unsubscribe operations 
+    remove it both locally and from the MQTT broker.
+</p>
+
+<h3>Simple Unsubscribe</h3>
+<pre><code class="language-csharp">
+// Subscribe directly
+var subscription = await client.SubscribeAsync("game/events", QoS.AtMostOnce);
+
+// Unsubscribe
+await client.UnsubscribeAsync(subscription);
+</code></pre>
+
+<ul>
+    <li>Removes the subscription from the client's internal dictionary (<code>_subscriptions</code>).</li>
+    <li>Deletes all associated routes (<code>DeleteAllRoutes()</code>).</li>
+    <li>Unsubscribes from the MQTT broker.</li>
+    <li>Triggers the <code>OnUnsubscribed</code> event.</li>
+</ul>
+
+<hr>
+
+<h3>Fluent Builder Unsubscribe</h3>
+<p>
+    The fluent builder creates a <code>TopicSubscription</code> only when <code>SubscribeAsync()</code> is called.
+    If multiple handlers are attached via the builder, they are grouped under the same subscription and are removed together.
+</p>
+
+<pre><code class="language-csharp">
+// Fluent subscription
+var sub = await client.CreateSubscription()
+    .WithTopic("game/state")
+    .AddTopicHandler(handler1)
+    .AddTopicHandler(handler2)
+    .SubscribeAsync();
+
+// Remove all handlers at once
+await client.UnsubscribeAsync(sub);
+</code></pre>
+
+<ul>
+    <li>All handlers under the subscription are deleted together.</li>
+    <li>No individual route access through fluent builder.</li>
+</ul>
+
+<hr>
+
+<h3>Manual Route Management (Advanced)</h3>
+<p>
+    For more control, you can manipulate individual routes using <code>AddRoute</code> and <code>DeleteRoute</code>:
+</p>
+
+<pre><code class="language-csharp">
+// Subscribe to a topic
+var subscription = await client.SubscribeAsync("chat/messages");
+
+// Add individual routes
+var route1 = subscription.AddRoute(msg => {
+    Console.WriteLine("Handler 1");
+    return Task.CompletedTask;
+});
+
+var route2 = subscription.AddRoute&lt;ChatDto&gt;(data => {
+    Console.WriteLine($"Handler 2: {data.Username}");
+    return Task.CompletedTask;
+});
+
+// Remove a specific route without unsubscribing the whole subscription
+subscription.DeleteRoute(route1);
+
+// Remove all routes
+subscription.DeleteAllRoutes();
+</code></pre>
+
+<ul>
+    <li>Route-based approach allows per-handler deletion.</li>
+    <li>Each route has a unique <code>RouteId</code>.</li>
+    <li>Ideal for dynamic systems like UIs, plugins, or modular components.</li>
+</ul>
+
+<hr>
+
+<h3>Events Triggered by Unsubscribe</h3>
+<p>
+    Both fluent and manual unsubscriptions trigger the <code>OnUnsubscribed</code> event:
+</p>
+
+<pre><code class="language-csharp">
+client.OnUnsubscribed += subscription => {
+    Console.WriteLine($"Unsubscribed from topic: {subscription.Topic}");
+};
+</code></pre>
+
+<ul>
+    <li>Always called after the subscription is removed from the internal dictionary.</li>
+    <li>Useful for updating UI or internal state.</li>
+</ul>
+
+<hr>
+
+<h2 id="publish">5. Publish data to topics</h2>
+<p>
+    Easy MQTT allows publishing messages to topics in both string and strongly typed formats. 
+    Messages can also be sent with specific QoS levels and retained flags.
+</p>
+
+<h3>Publish a Simple String Message</h3>
+<p>
+    To send a plain string payload to a topic:
+</p>
+
+<pre><code class="language-csharp">
+// Ensure the client is connected first
+await client.PublishAsync("game/events", "Player joined", QoS.AtMostOnce);
+</code></pre>
+
+<ul>
+    <li><strong>Topic:</strong> The MQTT topic to publish to.</li>
+    <li><strong>Payload:</strong> The string message content.</li>
+    <li><strong>QoS:</strong> Quality of Service level (default is AtMostOnce).</li>
+</ul>
+
+<h3>Publish a Strongly Typed Object (DTO)</h3>
+<p>
+    For type-safe messages, publish a DTO that will be serialized to JSON:
+</p>
+
+<pre><code class="language-csharp">
+public class PlayerDto {
+    public string Username { get; set; }
+    public int Score { get; set; }
+}
+
+// Publishing a typed object
+var player = new PlayerDto { Username = "Alice", Score = 100 };
+await client.PublishAsync("player/update", player, QoS.AtLeastOnce);
+</code></pre>
+
+<p>
+    The payload is automatically serialized using the configured <code>IMqttMsgSerializer</code>.
+</p>
+
+<h3>Retained Messages</h3>
+<p>
+    Messages can be published with the retain flag to persist the last message on a topic:
+</p>
+
+<pre><code class="language-csharp">
+// Retained message
+await client.PublishAsync("game/status", "Server online", QoS.AtLeastOnce, retain: true);
+</code></pre>
+
+<ul>
+    <li><strong>Retain:</strong> If true, the broker keeps the last message for new subscribers.</li>
+    <li>Useful for status updates, configuration, or the latest sensor reading.</li>
+</ul>
+
+<hr>
+
+<h2 id="disconnect">6. Disconnect Handling</h2>
+<p>
+    When the client disconnects, either manually using <code>DisconnectAsync</code> or due to network issues, 
+    all active subscriptions are automatically cleared according to the internal implementation.
+</p>
+
+<h3>Automatic Subscription Cleanup</h3>
+<p>
+    On disconnect, the client performs the following steps:
+</p>
+<ul>
+    <li>Triggers <strong>OnClientDisconnected</strong> event to notify the application.</li>
+    <li>Deletes all routes from each active subscription using <code>DeleteAllRoutes()</code>.</li>
+    <li>Removes subscriptions from the internal <code>_subscriptions</code> dictionary.</li>
+    <li>Triggers <strong>OnUnsubscribed</strong> for each removed subscription.</li>
+</ul>
+
+<pre><code class="language-csharp">
+// Internal behavior on disconnect (simplified)
+foreach (var subscription in _subscriptions.Values)
+    subscription.DeleteAllRoutes();
+
+_subscriptions.Clear();
+
+// Trigger OnClientDisconnected is invoked elsewhere in ClientDisconnected()
+</code></pre>
+
+<h3>Example: Handling Disconnects</h3>
+<pre><code class="language-csharp">
+// Notify the application when the client disconnects
+client.OnClientDisconnected += async reason => {
+    Console.WriteLine($"Client disconnected: {reason}");
+    // Optionally: update UI or perform cleanup
+};
+
+// Notify for each subscription removed
+client.OnUnsubscribed += subscription => {
+    Console.WriteLine($"Subscription removed during disconnect: {subscription.Topic}");
+};
+</code></pre>
+
+<h4>Key Points</h4>
+<ul>
+    <li>All subscriptions live only while the client is connected.</li>
+    <li>Disconnecting clears all active subscriptions and their routes.</li>
+    <li><strong>OnUnsubscribed</strong> is always called when subscriptions are removed.</li>
+    <li>AutoReconnect does not automatically restore subscriptions; they must be re-created manually, typically inside <code>OnClientConnected</code>.</li>
+</ul>
+
+<hr>
+
+<h2 id="dispose">8. Dispose / Cleanup Clients</h2>
+<p>
+    When the Easy MQTT client is no longer needed, it should be properly disposed to release resources, stop background loops, 
+    and remove all subscriptions. The client implements <code>IAsyncDisposable</code> via <code>DisposeAsync()</code>.
+</p>
+
+<h3>Dispose Logic</h3>
+<p>
+    The <code>DisposeAsync</code> method performs the following steps in order:
+</p>
+<ul>
+    <li>Acquires an <code>AsyncLock</code> to ensure thread-safe disposal.</li>
+    <li>Unsubscribes from all MQTT client events (<code>ConnectedAsync</code>, <code>DisconnectedAsync</code>, <code>ApplicationMessageReceivedAsync</code>).</li>
+    <li>Stops the reconnect loop if running.</li>
+    <li>If the client is still connected, disconnects it gracefully.</li>
+    <li>Deletes all routes from every active subscription.</li>
+    <li>Clears the internal <code>_subscriptions</code> dictionary.</li>
+    <li>Disposes the underlying <code>_client</code> instance.</li>
+    <li>Marks the client as disposed using the <code>_disposed</code> flag to prevent further usage.</li>
+</ul>
+
+<h3>Example: DisposeAsync Usage</h3>
+<pre><code class="language-csharp">
+await client.DisposeAsync();
+</code></pre>
+
+<p>
+    After disposal:
+</p>
+<ul>
+    <li>The client cannot be reconnected or used to subscribe/publish messages.</li>
+    <li>All background tasks and subscriptions are cleaned up.</li>
+    <li>Events like <code>OnClientDisconnected</code> or <code>OnUnsubscribed</code> may be triggered as part of cleanup.</li>
+</ul>
+
+<h3>Notes</h3>
+<ul>
+    <li>Always call <code>DisposeAsync</code> when the client is no longer needed to avoid memory leaks or dangling connections.</li>
+    <li>The <code>AsyncLock</code> ensures that dispose operations are thread-safe and cannot run concurrently with connection or subscription logic.</li>
+    <li>Even if the client is already disconnected, disposal still clears subscriptions and releases resources.</li>
+</ul>
+
+<hr>
+
+<h2 id="unity-full-lifecycle">9. Full Easy MQTT Client Lifecycle in Unity</h2>
+
+<p>
+    This example shows how to fully manage an Easy MQTT client in Unity using <code>MonoBehaviour</code>. 
+    It covers creating the client, connecting, subscribing, receiving messages, unsubscribing, and disposing. 
+    Unity main thread safety is ensured using a dispatcher.
+</p>
+
+<h3>Complete Unity MonoBehaviour Example</h3>
+<pre><code class="language-csharp">
+using UnityEngine;
+using EasyMqtt.Client;
+using EasyMqtt.Types;
+using System;
+using System.Threading.Tasks;
+
+public class MqttUnityManager : MonoBehaviour
+{
+    private IEasyMqttClient _client;
+    private ITopicSubscription _gameEventsSub;
+
+    async void Start()
+    {
+        // 1. Create MQTT client
+        _client = new EasyMqttClient(
+            new MqttClientConfig { Host = "broker.example.com", AutoReconnect = true },
+            new MqttRouter(),
+            new JsonSerializer()
+        );
+
+        // 2. Register connection events
+        _client.OnClientConnected += OnConnected;
+        _client.OnClientDisconnected += OnDisconnected;
+        _client.OnMessageReceived += OnMessageReceived;
+        _client.OnSubscribed += sub => Debug.Log($"Subscribed to: {sub.Topic}");
+        _client.OnUnsubscribed += sub => Debug.Log($"Unsubscribed from: {sub.Topic}");
+
+        // 3. Connect
+        await _client.ConnectAsync();
+    }
+
+    private async Task OnConnected(string clientId)
+    {
+        Debug.Log($"MQTT connected: {clientId}");
+
+        // 4. Subscribe to topics
+        _gameEventsSub = await _client.CreateSubscription()
+            .WithTopic("game/events")
+            .WithQos(QoS.AtLeastOnce)
+            .AddTopicHandler(msg =>
+            {
+                // Dispatch to Unity main thread
+                UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                {
+                    Debug.Log($"Game Event: {msg}");
+                    // Example: update UI or GameObjects here
+                });
+                return Task.CompletedTask;
+            })
+            .SubscribeAsync();
+    }
+
+    private Task OnDisconnected(DisconnectReason reason)
+    {
+        Debug.Log($"MQTT disconnected: {reason}");
+        return Task.CompletedTask;
+    }
+
+    private void OnMessageReceived(string topic, string payload)
+    {
+        // Optional global handler
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            Debug.Log($"[Global] {topic}: {payload}");
+        });
+    }
+
+    // Example method to unsubscribe manually
+    public async Task UnsubscribeGameEvents()
+    {
+        if (_gameEventsSub != null)
+        {
+            await _client.UnsubscribeAsync(_gameEventsSub);
+            _gameEventsSub = null;
+        }
+    }
+
+    async void OnDestroy()
+    {
+        // 5. Clean up
+        if (_client != null)
+        {
+            await UnsubscribeGameEvents();
+            await _client.DisposeAsync();
+            _client = null;
+        }
+    }
+}
+</code></pre>
+
+<h3>Main Thread Dispatcher Notes</h3>
+<ul>
+    <li>All Unity API calls must happen on the main thread.</li>
+    <li>Use <code>UnityMainThreadDispatcher.Instance().Enqueue(Action)</code> to marshal async callbacks safely.</li>
+    <li>This ensures that MQTT background threads do not directly manipulate GameObjects or UI.</li>
+</ul>
+
+<h3>Key Lifecycle Points</h3>
+<ul>
+    <li><strong>Create Client</strong>: Instantiate <code>EasyMqttClient</code> with config and router.</li>
+    <li><strong>Connect</strong>: Call <code>ConnectAsync()</code>, automatically triggers <code>OnClientConnected</code>.</li>
+    <li><strong>Subscribe</strong>: Use fluent builder or direct <code>SubscribeAsync()</code>.</li>
+    <li><strong>Receive Messages</strong>: Handle via per-topic handlers or <code>OnMessageReceived</code>.</li>
+    <li><strong>Unsubscribe</strong>: Call <code>UnsubscribeAsync()</code> to remove a subscription.</li>
+    <li><strong>Dispose</strong>: Call <code>DisposeAsync()</code> on MonoBehaviour destroy to clean up all subscriptions and client resources.</li>
+</ul>
+
+<p>
+    Unity API calls (like updating GameObjects or UI) must always run on the main thread. 
+    To safely execute MQTT callbacks or other async tasks, a main thread dispatcher is required.
+</p>
+
+<h3>UnityMainThreadDispatcher Implementation</h3>
+<pre><code class="language-csharp">
+using System;
+using System.Collections.Concurrent;
+using UnityEngine;
+
+public class UnityMainThreadDispatcher : MonoBehaviour
+{
+    private static UnityMainThreadDispatcher _instance;
+    private static readonly ConcurrentQueue<Action> _executionQueue = new ConcurrentQueue<Action>();
+
+    public static UnityMainThreadDispatcher Instance()
+    {
+        if (_instance == null)
+        {
+            var obj = new GameObject("MainThreadDispatcher");
+            _instance = obj.AddComponent<UnityMainThreadDispatcher>();
+            DontDestroyOnLoad(obj);
+        }
+        return _instance;
+    }
+
+    public void Enqueue(Action action)
+    {
+        if (action == null) return;
+        _executionQueue.Enqueue(action);
+    }
+
+    void Update()
+    {
+        while (_executionQueue.TryDequeue(out var action))
+        {
+            action?.Invoke();
+        }
+    }
+}
+</code></pre>
+
+<h3>Usage Example in MQTT Callback</h3>
+<pre><code class="language-csharp">
+// Inside an async MQTT message handler
+_gameEventsSub = await _client.CreateSubscription()
+    .WithTopic("game/events")
+    .AddTopicHandler(msg =>
+    {
+        // Dispatch to Unity main thread
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            Debug.Log($"Game Event: {msg}");
+            // Safely update GameObjects or UI here
+        });
+        return Task.CompletedTask;
+    })
+    .SubscribeAsync();
+</code></pre>
+
+<ul>
+    <li>Enqueues an action in <code>_executionQueue</code>.</li>
+    <li>All enqueued actions are executed in <code>Update()</code> on the main thread.</li>
+    <li>Ensures async MQTT callbacks or other background tasks interact safely with Unity APIs.</li>
+</ul>
+
+<hr>
+
+<h2 id="public-api">10. Public API</h2>
+<p>
+    The Easy MQTT library exposes a clean and structured public API through interfaces. 
+    These interfaces define the capabilities of the client, subscriptions, serialization, and routing.
+</p>
+
+<h3>IEasyMqttClient</h3>
+<pre><code class="language-csharp">
+public interface IEasyMqttClient : IAsyncDisposable {
+    MqttClientConfig Config { get; }
+    Guid Id { get; }
+    MQTTConnectionState ConnectionState { get; }
+
+    event Func&lt;string, Task&gt; OnClientConnected;
+    event Func&lt;DisconnectReason, Task&gt; OnClientDisconnected;
+    event Action&lt;ITopicSubscription&gt; OnSubscribed;
+    event Action&lt;ITopicSubscription&gt; OnUnsubscribed;
+    event Action&lt;string, QoS, string&gt; OnMessageReceived;
+    event Action&lt;Exception&gt; OnError;
+
+    Task ConnectAsync(CancellationToken ct = default);
+    Task DisconnectAsync(DisconnectReason reason = DisconnectReason.NormalDisconnection, CancellationToken ct = default);
+
+    Task&lt;ITopicSubscription&gt; SubscribeAsync(string topic, QoS qos = QoS.AtMostOnce, CancellationToken ct = default);
+    Task UnsubscribeAsync(ITopicSubscription subscription, CancellationToken ct = default);
+
+    Task PublishAsync(string topic, string payload, QoS qos = QoS.AtMostOnce, bool retain = false, CancellationToken ct = default);
+    Task PublishAsync&lt;T&gt;(string topic, T payload, QoS qos = QoS.AtMostOnce, bool retain = false, CancellationToken ct = default);
+
+    IMqttSubscriptionBuilder CreateSubscription();
+}
+</code></pre>
+
+<h3>IMqttClientFactory</h3>
+<pre><code class="language-csharp">
+public interface IMqttClientFactory {
+    IEasyMqttClient CreateMqttClient(MqttClientConfig config);
+}
+</code></pre>
+
+<h3>IMqttMsgSerializer</h3>
+<pre><code class="language-csharp">
+public interface IMqttMsgSerializer {
+    string SerializeToJson&lt;T&gt;(T payload);
+    T DeserializeFromJson&lt;T&gt;(string payload);
+}
+</code></pre>
+
+<h3>IMqttRouterApi</h3>
+<pre><code class="language-csharp">
+public interface IMqttRouterApi {
+    IRouteLink AddRoute(TopicReceiveHandler handler);
+    IRouteLink AddRoute&lt;T&gt;(TopicReceiveHandler&lt;T&gt; handler);
+    void DeleteRoute(IRouteLink link);
+    void DeleteAllRoutes();
+}
+</code></pre>
+
+<h3>IMqttSubscriptionBuilder</h3>
+<pre><code class="language-csharp">
+public interface IMqttSubscriptionBuilder {
+    MqttSubscriptionBuilder WithTopic(string topic);
+    MqttSubscriptionBuilder WithQos(QoS qos);
+    MqttSubscriptionBuilder AddTopicHandler(TopicReceiveHandler handler);
+    MqttSubscriptionBuilder AddTopicHandler&lt;T&gt;(TopicReceiveHandler&lt;T&gt; handler);
+    Task&lt;ITopicSubscription&gt; SubscribeAsync(CancellationToken ct = default);
+}
+</code></pre>
+
+<h3>IRouteLink</h3>
+<pre><code class="language-csharp">
+public interface IRouteLink {
+    Guid RouteId { get; }
+    string Topic { get; }
+}
+</code></pre>
+
+<h3>ITopicSubscription</h3>
+<pre><code class="language-csharp">
+public interface ITopicSubscription : IMqttRouterApi {
+    string Topic { get; }
+    QoS QoS { get; }
+
+    Task HandleMessageAsync(string payload, CancellationToken ct = default);
+}
+</code></pre>
+
+<p>
+    These interfaces form the backbone of the Easy MQTT client, enabling flexible client creation, subscription management, 
+    message publishing, and route-based message handling.
+</p>
+
+<h2 id="demo-scene">11. Simple Unity Demo Code</h2>
+<p>
+    This demo scene shows how to integrate the Easy MQTT client into a <strong>Unity MonoBehaviour</strong> environment. 
+    It demonstrates connecting to a broker, subscribing to a topic, publishing messages, and handling events while ensuring 
+    all UI updates occur on the main Unity thread using a <strong>main thread dispatcher</strong>.
+</p>
+
+<h3>Main Features</h3>
+<ul>
+    <li>Automatic main thread dispatching using <code>ConcurrentQueue&lt;Action&gt;</code>.</li>
+    <li>Connect, disconnect, subscribe, unsubscribe, and publish to topics.</li>
+    <li>UI integration for displaying logs, connection status, and received messages.</li>
+    <li>Handling MQTT events asynchronously and safely in Unity.</li>
+</ul>
+
+<h3>Main Thread Dispatcher</h3>
+<p>
+    Since MQTT events are asynchronous and run on background threads, all UI operations must be dispatched to the main thread.
+    This is done using a <code>ConcurrentQueue&lt;Action&gt;</code> and processing it in <code>Update()</code>:
+</p>
+
+<pre><code class="language-csharp">
+private readonly ConcurrentQueue&lt;Action&gt; _mainThreadActions = new();
+
+private void Update() {
+    while (_mainThreadActions.TryDequeue(out Action action)) action();
+}
+
+private void Invoke(Action action) => _mainThreadActions.Enqueue(action);
+</code></pre>
+
+<h3>Connect and Subscribe</h3>
+<p>
+    The <code>ConnectAsync</code> method creates the client, registers events, and connects to the broker. 
+    Upon successful connection, a topic subscription is created using the fluent builder API:
+</p>
+
+<pre><code class="language-csharp">
+private async Task ConnectAsync(string broker, int port, bool useTLS, TransportType transportType, string wsEndpoint) {
+    var config = new MqttClientConfig {
+        Host = broker,
+        Port = port,
+        Transport = transportType,
+        WebSocketEndpoint = wsEndpoint,
+        ConnectionMode = useTLS ? MQTTConnectionMode.TLS_CA : MQTTConnectionMode.PlainText
+    };
+
+    _client?.DisposeAsync();
+    var mqttClientFactory = new MqttClientFactory();
+    _client = mqttClientFactory.CreateMqttClient(config);
+
+    _client.OnClientConnected += OnClientConnected;
+    _client.OnClientDisconnected += OnClientDisconnected;
+    _client.OnMessageReceived += OnMessageReceived;
+    _client.OnSubscribed += OnSubscribedToTopic;
+    _client.OnUnsubscribed += OnUnsubscribedFromTopic;
+    _client.OnError += OnError;
+
+    await _client.ConnectAsync();
+}
+</code></pre>
+
+<h3>Publish Messages</h3>
+<p>
+    Publishing uses the strongly typed <code>MqttTopicData</code> object, ensuring the payload is associated with the client ID:
+</p>
+
+<pre><code class="language-csharp">
+public async Task&lt;bool&gt; PublishAsync(string payload, QoS qos = QoS.AtMostOnce, bool retain = false) {
+    var data = new MqttTopicData(_client.Id, payload);
+    await _client.PublishAsync&lt;MqttTopicData&gt;(_topic, data, qos, retain);
+    return true;
+}
+</code></pre>
+
+<h3>Disconnect and Cleanup</h3>
+<p>
+    Disconnecting safely unsubscribes from topics, disconnects the client, and optionally unregisters event handlers:
+</p>
+
+<pre><code class="language-csharp">
+private async Task DisconnectAsync(bool releaseEvents = false) {
+    if (_subscription != null) {
+        await _client.UnsubscribeAsync(_subscription);
+        _subscription = null;
+    }
+
+    await _client.DisconnectAsync();
+
+    if (releaseEvents) {
+        _client.OnClientConnected -= OnClientConnected;
+        _client.OnClientDisconnected -= OnClientDisconnected;
+        _client.OnMessageReceived -= OnMessageReceived;
+        _client.OnSubscribed -= OnSubscribedToTopic;
+        _client.OnUnsubscribed -= OnUnsubscribedFromTopic;
+        _client.OnError -= OnError;
+    }
+}
+</code></pre>
+
+<h3>Handling Incoming Messages</h3>
+<p>
+    All incoming messages and MQTT events are dispatched to the main thread to safely update the UI:
+</p>
+
+<pre><code class="language-csharp">
+private void OnMessageReceived(string topic, QoS qos, string message) {
+    Invoke(() =&gt; _ui.LogInfoToConsole($"Message received on topic [{topic}] with QoS [{qos}]: {message}"));
+}
+
+private Task OnTopicMessageReceived(MqttTopicData data) {
+    Invoke(() =&gt; _ui.LogReceivedMessage(data.ClientId.ToString(), data.Payload));
+    return Task.CompletedTask;
+}
+</code></pre>
+
+<h3>UI Integration</h3>
+<p>
+    The <code>UI</code> MonoBehaviour provides buttons and input fields for connecting, disconnecting, sending messages, 
+    and selecting QoS and retain flags. Events from <code>MqttManager</code> are linked to button actions:
+</p>
+
+<ul>
+    <li><code>OnConnectButton</code> → triggers <code>ConnectAsync</code></li>
+    <li><code>OnDisconnectButton</code> → triggers <code>DisconnectAsync</code></li>
+    <li><code>OnPublishButton</code> → triggers <code>PublishAsync</code></li>
+</ul>
+
+<h3>Subscription Handling</h3>
+<p>
+    Subscriptions are created via the fluent builder API and handled asynchronously. Incoming payloads are deserialized into typed objects:
+</p>
+
+<pre><code class="language-csharp">
+_subscription = await _client.CreateSubscription()
+                              .WithTopic(_topic)
+                              .WithQos(_subscribeQos)
+                              .AddTopicHandler&lt;MqttTopicData&gt;(OnTopicMessageReceived)
+                              .SubscribeAsync();
+</code></pre>
+
+<h3>Key Points</h3>
+<ul>
+    <li>All UI updates are executed on the main thread using <code>ConcurrentQueue&lt;Action&gt;</code>.</li>
+    <li>Async MQTT operations are safe in Unity, avoiding race conditions and threading issues.</li>
+    <li>Fluent API for subscriptions keeps code readable and maintainable.</li>
+    <li>Proper cleanup is ensured on <code>OnDisable</code> and <code>OnDestroy</code> by disconnecting, unsubscribing, and disposing the client.</li>
+</ul>
+
+<p>
+    This example demonstrates a complete Unity integration scenario with Easy MQTT, covering connection lifecycle, message handling, 
+    publishing, and UI integration.
+</p>
+
+</body>
+</html>
